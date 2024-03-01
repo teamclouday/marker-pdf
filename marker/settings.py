@@ -10,7 +10,7 @@ import torch
 
 class Settings(BaseSettings):
     # General
-    TORCH_DEVICE: Optional[str] = None
+    TORCH_DEVICE: Optional[str] = "cuda"
 
     @computed_field
     @property

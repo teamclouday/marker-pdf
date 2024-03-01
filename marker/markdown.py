@@ -12,7 +12,7 @@ def surround_text(s, char_to_insert):
     return final_string
 
 
-def merge_spans(blocks):
+def merge_spans(blocks: list[Page]):
     merged_blocks = []
     for page in blocks:
         page_blocks = []
@@ -117,20 +117,20 @@ def block_separator(line1, line2, block_type1, block_type2):
     return sep + line2
 
 
-def merge_lines(blocks, page_blocks: List[Page]):
+def merge_lines(blocks: list[list[MergedBlock]], page_blocks: List[Page]):
     text_blocks = []
     prev_type = None
     prev_line = None
     block_text = ""
     block_type = ""
     common_line_heights = [p.get_line_height_stats() for p in page_blocks]
-    for page in blocks:
+    for page, actual_page in zip(blocks, page_blocks):
         for block in page:
             block_type = block.most_common_block_type()
             if block_type != prev_type and prev_type:
                 text_blocks.append(
                     FullyMergedBlock(
-                        text=block_surround(block_text, prev_type),
+                        text=f">#PAGE#<{actual_page.pnum}\n{block_surround(block_text, prev_type)}",
                         block_type=prev_type
                     )
                 )
