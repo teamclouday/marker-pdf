@@ -14,7 +14,7 @@ def byt5_tokenize(text: str, max_length: int, pad_token_id: int = 0):
     byte_codes = []
     for char in text:
         # Add 3 to account for special tokens
-        byte_codes.append([byte + 3 for byte in char.encode('utf-8')])
+        byte_codes.append([byte + 3 for byte in char.encode("utf-8")])
 
     tokens = list(chain.from_iterable(byte_codes))
     # Map each token to the character it represents
@@ -23,7 +23,7 @@ def byt5_tokenize(text: str, max_length: int, pad_token_id: int = 0):
     batched_tokens = []
     attention_mask = []
     for i in range(0, len(tokens), max_length):
-        batched_tokens.append(tokens[i:i + max_length])
+        batched_tokens.append(tokens[i : i + max_length])
         attention_mask.append([1] * len(batched_tokens[-1]))
 
     # Pad last item
@@ -31,9 +31,11 @@ def byt5_tokenize(text: str, max_length: int, pad_token_id: int = 0):
         batched_tokens[-1] += [pad_token_id] * (max_length - len(batched_tokens[-1]))
         attention_mask[-1] += [0] * (max_length - len(attention_mask[-1]))
 
-    return {"input_ids": batched_tokens, "attention_mask": attention_mask, "char_token_lengths": char_token_lengths}
-
-
+    return {
+        "input_ids": batched_tokens,
+        "attention_mask": attention_mask,
+        "char_token_lengths": char_token_lengths,
+    }
 
 
 # From https://github.com/osainz59/t5-encoder
@@ -53,7 +55,9 @@ class T5ForTokenClassification(T5PreTrainedModel):
         self.encoder = T5Stack(encoder_config, self.shared)
 
         classifier_dropout = (
-            config.classifier_dropout if hasattr(config, 'classifier_dropout') else config.dropout_rate
+            config.classifier_dropout
+            if hasattr(config, "classifier_dropout")
+            else config.dropout_rate
         )
         self.dropout = nn.Dropout(classifier_dropout)
         self.classifier = nn.Linear(config.d_model, config.num_labels)
@@ -64,7 +68,6 @@ class T5ForTokenClassification(T5PreTrainedModel):
         # Model parallel
         self.model_parallel = False
         self.device_map = None
-
 
     def parallelize(self, device_map=None):
         self.device_map = (
@@ -110,7 +113,9 @@ class T5ForTokenClassification(T5PreTrainedModel):
         output_hidden_states: Optional[bool] = None,
         return_dict: Optional[bool] = None,
     ) -> Union[Tuple[torch.FloatTensor], TokenClassifierOutput]:
-        return_dict = return_dict if return_dict is not None else self.config.use_return_dict
+        return_dict = (
+            return_dict if return_dict is not None else self.config.use_return_dict
+        )
 
         outputs = self.encoder(
             input_ids=input_ids,
@@ -137,5 +142,5 @@ class T5ForTokenClassification(T5PreTrainedModel):
             loss=loss,
             logits=logits,
             hidden_states=outputs.hidden_states,
-            attentions=outputs.attentions
+            attentions=outputs.attentions,
         )
