@@ -17,12 +17,14 @@ configure_logging()
 
 
 @ray.remote(num_cpus=settings.RAY_CORES_PER_WORKER, num_gpus=.05 if settings.CUDA else 0)
-def process_single_pdf(fname: str, out_folder: str, model_refs, metadata: Optional[Dict] = None, min_length: Optional[int] = None):
+def process_single_pdf(fname: str, out_folder: str, model_refs, metadata: Optional[Dict] = None, min_length: Optional[int] = None, skip_exist: Optional[bool] = False):
     out_filename = fname.rsplit(".", 1)[0] + ".md"
     out_filename = os.path.join(out_folder, os.path.basename(out_filename))
     out_meta_filename = out_filename.rsplit(".", 1)[0] + "_meta.json"
-    if os.path.exists(out_filename):
+    if os.path.exists(out_filename) and skip_exist:
         return
+    os.remove(out_filename) if os.path.exists(out_filename) else None
+    os.remove(out_meta_filename) if os.path.exists(out_meta_filename) else None
     try:
         # Skip trying to convert files that don't have a lot of embedded text
         # This can indicate that they were scanned, and not OCRed properly
@@ -55,6 +57,7 @@ def main():
     parser.add_argument("--workers", type=int, default=5, help="Number of worker processes to use")
     parser.add_argument("--metadata_file", type=str, default=None, help="Metadata json file to use for filtering")
     parser.add_argument("--min_length", type=int, default=None, help="Minimum length of pdf to convert")
+    parser.add_argument("--skip", action="store_true", help="Skip files that have already been converted")
 
     args = parser.parse_args()
 
@@ -103,7 +106,8 @@ def main():
             out_folder,
             model_refs,
             metadata=metadata.get(os.path.basename(filename)),
-            min_length=args.min_length
+            min_length=args.min_length,
+            skip_exist=args.skip
         ) for filename in files_to_convert
     ]
 
