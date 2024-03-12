@@ -13,7 +13,7 @@ ocrmypdf.configure_logging(verbosity=ocrmypdf.Verbosity.quiet)
 
 
 def ocr_entire_page(
-    page, lang: str, spellchecker: Optional[SpellChecker] = None
+    page: pymupdf.Page, lang: str, spellchecker: Optional[SpellChecker] = None
 ) -> List[Block]:
     if settings.OCR_ENGINE == "tesseract":
         return ocr_entire_page_tess(page, lang, spellchecker)
@@ -24,10 +24,10 @@ def ocr_entire_page(
 
 
 def ocr_entire_page_tess(
-    page, lang: str, spellchecker: Optional[SpellChecker] = None
+    page: pymupdf.Page, lang: str, spellchecker: Optional[SpellChecker] = None
 ) -> List[Block]:
     try:
-        full_tp = page.get_textpage_ocr(
+        full_tp: pymupdf.TextPage = page.get_textpage_ocr(
             flags=settings.TEXT_FLAGS, dpi=settings.OCR_DPI, full=True, language=lang
         )
         blocks = page.get_text(
@@ -44,13 +44,14 @@ def ocr_entire_page_tess(
         # OCR can fail if there is a scanned blank page with some faint text impressions, for example
         if detect_bad_ocr(full_text, spellchecker):
             return []
-    except RuntimeError:
+    except RuntimeError as e:
+        print(f"Error while OCRing page {page.number}: {e}")
         return []
     return blocks
 
 
 def ocr_entire_page_ocrmp(
-    page, lang: str, spellchecker: Optional[SpellChecker] = None
+    page: pymupdf.Page, lang: str, spellchecker: Optional[SpellChecker] = None
 ) -> List[Block]:
     # Use ocrmypdf to get OCR text for the whole page
     src = page.parent  # the page's document
@@ -66,10 +67,12 @@ def ocr_entire_page_ocrmp(
         outbytes,
         language=lang,
         output_type="pdf",
-        redo_ocr=None if settings.OCR_ALL_PAGES else True,
-        force_ocr=True if settings.OCR_ALL_PAGES else None,
+        redo_ocr=None,
+        force_ocr=True,
+        rotate_pages=True,
+        deskew=True,
         progress_bar=False,
-        optimize=False,
+        optimize=0,
         fast_web_view=1e6,
         skip_big=15,  # skip images larger than 15 megapixels
         tesseract_timeout=settings.TESSERACT_TIMEOUT,

@@ -65,7 +65,7 @@ class Settings(BaseSettings):
         "Korean": "kor",
         "Hindi": "hin",
     }
-    TESSERACT_TIMEOUT: int = 20  # When to give up on OCR
+    TESSERACT_TIMEOUT: int = 100  # When to give up on OCR
     SPELLCHECK_LANGUAGES: Dict = {
         "English": "en",
         "Spanish": "es",

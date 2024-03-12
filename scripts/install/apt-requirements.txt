@@ -12,3 +12,5 @@ tesseract-ocr-chi-sim
 tesseract-ocr-jpn
 tesseract-ocr-kor
 tesseract-ocr-hin
+tesseract-ocr-osd
+unpaper

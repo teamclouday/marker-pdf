@@ -1,9 +1,10 @@
 import os
 from typing import Tuple, List, Optional
 
+import fitz as pymupdf
 from spellchecker import SpellChecker
 
-from marker.bbox import correct_rotation
+from marker.bbox import box_contained
 from marker.ocr.page import ocr_entire_page
 from marker.ocr.utils import detect_bad_ocr, font_flags_decomposer
 from marker.settings import settings
@@ -31,7 +32,7 @@ def sort_rotated_text(page_blocks, tolerance=1.25):
 
 
 def get_single_page_blocks(
-    doc,
+    doc: pymupdf.Document,
     pnum: int,
     tess_lang: str,
     spellchecker: Optional[SpellChecker] = None,
@@ -45,7 +46,7 @@ def get_single_page_blocks(
     else:
         blocks = page.get_text("dict", sort=True, flags=settings.TEXT_FLAGS)["blocks"]
 
-    page_blocks = []
+    page_blocks: list[Block] = []
     span_id = 0
     for block_idx, block in enumerate(blocks):
         block_lines = []
@@ -56,27 +57,34 @@ def get_single_page_blocks(
                 bbox = s["bbox"]
                 span_obj = Span(
                     text=block_text,
-                    bbox=correct_rotation(bbox, page),
+                    bbox=bbox,
                     span_id=f"{pnum}_{span_id}",
                     font=f"{s['font']}_{font_flags_decomposer(s['flags'])}",  # Add font flags to end of font
                     color=s["color"],
                     ascender=s["ascender"],
                     descender=s["descender"],
                 )
-                spans.append(span_obj)  # Text, bounding box, span id
-                span_id += 1
+                if span_obj.area > 0 and box_contained(bbox, page.rect):
+                    spans.append(span_obj)  # Text, bounding box, span id
+                    span_id += 1
             line_obj = Line(
                 spans=spans,
-                bbox=correct_rotation(l["bbox"], page),
+                bbox=l["bbox"],
             )
             # Only select valid lines, with positive bboxes
-            if line_obj.area > 0:
+            if (
+                line_obj.area > 0
+                and len(spans) > 0
+                and box_contained(line_obj.bbox, page.rect)
+            ):
                 block_lines.append(line_obj)
-        block_obj = Block(
-            lines=block_lines, bbox=correct_rotation(block["bbox"], page), pnum=pnum
-        )
+        block_obj = Block(lines=block_lines, bbox=block["bbox"], pnum=pnum)
         # Only select blocks with multiple lines
-        if len(block_lines) > 0:
+        if (
+            block_obj.area > 0
+            and len(block_lines) > 0
+            and box_contained(block_obj.bbox, page.rect)
+        ):
             page_blocks.append(block_obj)
 
     # If the page was rotated, sort the text again
@@ -86,13 +94,12 @@ def get_single_page_blocks(
 
 
 def convert_single_page(
-    doc,
-    pnum,
+    doc: pymupdf.Document,
+    pnum: int,
     tess_lang: str,
     spell_lang: Optional[str],
     no_text: bool,
     disable_ocr: bool = False,
-    min_ocr_page: int = 2,
 ):
     ocr_pages = 0
     ocr_success = 0
@@ -114,7 +121,6 @@ def convert_single_page(
                 and detect_bad_ocr(page_obj.prelim_text, spellchecker)
             )  # Bad OCR
         ),
-        min_ocr_page < pnum < len(doc) - 1,
         not disable_ocr,
     ]
     if all(conditions) or settings.OCR_ALL_PAGES:
@@ -136,13 +142,13 @@ def convert_single_page(
 
 
 def get_text_blocks(
-    doc,
+    doc: pymupdf.Document,
     tess_lang: str,
     spell_lang: Optional[str],
     max_pages: Optional[int] = None,
     parallel: int = settings.OCR_PARALLEL_WORKERS,
 ):
-    all_blocks = []
+    all_blocks: list[Page] = []
     toc = doc.get_toc()
     ocr_pages = 0
     ocr_failed = 0

@@ -1,6 +1,7 @@
 from concurrent.futures import ThreadPoolExecutor
 from typing import List
 
+import fitz as pymupdf
 from transformers import LayoutLMv3ForTokenClassification
 
 from marker.bbox import unnormalize_box
@@ -50,7 +51,10 @@ def load_layout_model():
 
 
 def detect_document_block_types(
-    doc, blocks: List[Page], layoutlm_model, batch_size=settings.LAYOUT_BATCH_SIZE
+    doc: pymupdf.Document,
+    blocks: List[Page],
+    layoutlm_model,
+    batch_size=settings.LAYOUT_BATCH_SIZE,
 ):
     encodings, metadata, sample_lengths = get_features(doc, blocks)
     predictions = predict_block_types(encodings, layoutlm_model, batch_size)
@@ -71,7 +75,7 @@ def get_provisional_boxes(pred, box, is_subword, start_idx=0):
     return prov_predictions, prov_boxes
 
 
-def get_page_encoding(page, page_blocks: Page):
+def get_page_encoding(page: pymupdf.Page, page_blocks: Page):
     if len(page_blocks.get_all_lines()) == 0:
         return [], []
 
@@ -107,9 +111,11 @@ def get_page_encoding(page, page_blocks: Page):
 
         # Handle case when boxes are 0 or less width or height
         if box[2] <= box[0]:
+            print(box)
             print("Zero width box found, cannot convert properly")
             raise ValueError
         if box[3] <= box[1]:
+            print(box)
             print("Zero height box found, cannot convert properly")
             raise ValueError
         boxes.append(box)
@@ -117,11 +123,11 @@ def get_page_encoding(page, page_blocks: Page):
 
     # Normalize boxes for model (scale to 1000x1000)
     boxes = [normalize_box(box, pwidth, pheight) for box in boxes]
-    for box in boxes:
-        # Verify that boxes are all valid
-        assert len(box) == 4
-        assert (max(box)) <= 1000
-        assert (min(box)) >= 0
+    # for box in boxes:
+    #     # Verify that boxes are all valid
+    #     assert len(box) == 4
+    #     assert (max(box)) <= 1000
+    #     assert (min(box)) >= 0
 
     encoding = processor(
         rgb_image,

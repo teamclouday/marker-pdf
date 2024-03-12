@@ -58,7 +58,7 @@ def get_length_of_text(fname: str) -> int:
 def convert_single_pdf(
     fname: str,
     model_lst: List,
-    max_pages=None,
+    max_pages: Optional[int] = None,
     metadata: Optional[Dict] = None,
     parallel_factor: int = 1,
 ) -> Tuple[str, Dict]:
@@ -81,7 +81,7 @@ def convert_single_pdf(
 
     out_meta["filetype"] = filetype
 
-    doc = pymupdf.open(fname, filetype=filetype)
+    doc: pymupdf.Document = pymupdf.open(fname, filetype=filetype)
     if filetype != "pdf":
         conv = doc.convert_to_pdf()
         doc = pymupdf.open("pdf", conv)
