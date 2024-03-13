@@ -70,7 +70,7 @@ def ocr_entire_page_ocrmp(
         redo_ocr=None,
         force_ocr=True,
         rotate_pages=True,
-        deskew=True,
+        # deskew=True,
         progress_bar=False,
         optimize=0,
         fast_web_view=1e6,
